@@ -14,11 +14,11 @@ let Game = {
   frame: 0,
 
   // METHODS
-  /**
-   * contains all updates the website will receive on this loop
-   * NOTE: Put any changes here in subfunctions, lets try and keep update() clean
-   */
+
   update: () => {
+    
+  },
+  draw: () => {
     Game.lastRender = Date.now();
     debug(`Frame ${Game.frame}: Loaded in ${Game.deltaTime} ms`);
   },
@@ -37,8 +37,9 @@ let Game = {
   },
 
   loop: () => {
+    Game.update();
     if (Game.shouldRenderFrame()) {
-      Game.update();
+      Game.draw();
       Game.frame += 1;
     }
     window.requestAnimationFrame(Game.loop);
