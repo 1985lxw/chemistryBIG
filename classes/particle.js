@@ -1,5 +1,5 @@
 // Particle class for click effects
-class Particle {
+export class Particle {
   constructor(x, y) {
     this.x = x;
     this.y = y;

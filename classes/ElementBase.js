@@ -1,5 +1,5 @@
 // ElementBase class
-class ElementBase {
+export class ElementBase {
   constructor(options = {}) {
     this.name = options.name || 'H';
     this.x = options.x || 0;

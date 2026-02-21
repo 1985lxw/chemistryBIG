@@ -1,4 +1,4 @@
-import { Environment } from "./environment.js";
+// import { Environment } from "./environment.js";
 import { Particle } from "./classes/Particle.js";
 import { ElementBase } from "./classes/ElementBase.js";
 
