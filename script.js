@@ -2,7 +2,8 @@ import { drawCanvas } from "./render.js";
 
 let canvas = document.getElementById("sim-canvas");
 const ctx = canvas.getContext("2d");
-console.log(ctx);
+let DEBUG = true; // switch this to true/false depending on 
+
 
 // Canvas dimensions constants
 let CANVAS_WIDTH;
@@ -101,11 +102,17 @@ window.ChemistryBIG.ElementBase = ElementBase;
 
 // Collision detection between elements
 function checkCollisions() {
-  for (let i = 0; i < elements.length; i++) {
-    for (let j = i + 1; j < elements.length; j++) {
-      const e1 = elements[i];
+  const n = elements.length; // snapshot length
+  const toRemove = new Set(); // Track indices to remove
+
+  for (let i = 0; i < n; i++) {
+    const e1 = elements[i];
+    if (!e1) continue;
+
+    for (let j = i + 1; j < n; j++) {
       const e2 = elements[j];
-      
+      if (!e2) continue;
+
       // Calculate distance between centers
       const dx = e2.x - e1.x;
       const dy = e2.y - e1.y;
@@ -130,16 +137,53 @@ function checkCollisions() {
         
         // Separate elements to prevent overlap
         const overlap = e1.size + e2.size - distance;
-        const separationX = (dx / distance) * (overlap / 2 + 1);
-        const separationY = (dy / distance) * (overlap / 2 + 1);
-        
-        e1.x -= separationX;
-        e1.y -= separationY;
-        e2.x += separationX;
-        e2.y += separationY;
+        if (overlap > 0 && distance > 0) {
+          const separationX = (dx / distance) * (overlap / 2 + 1);
+          const separationY = (dy / distance) * (overlap / 2 + 1);
+          
+          e1.x -= separationX;
+          e1.y -= separationY;
+          e2.x += separationX;
+          e2.y += separationY;
+        }
+
+        // Check for reaction after collision is handled
+        const reaction = window.ChemistryBIG?.getReaction?.(e1.name, e2.name);
+        if (reaction && Math.random() < (reaction.probability ?? 0)) {
+          const products = Array.isArray(reaction.products) ? reaction.products : [];
+          
+          // Collision point (midpoint between reactants)
+          const collisionX = (e1.x + e2.x) / 2;
+          const collisionY = (e1.y + e2.y) / 2;
+          
+          for (const productName of products) {
+            const capitalizedName = productName.charAt(0).toUpperCase() + productName.slice(1).toLowerCase();
+            const product = window.ChemistryBIG?.createElementInstance?.(
+              capitalizedName,
+              collisionX,
+              collisionY
+            );
+            
+            if (product) {
+              elements.push(product);
+            }
+          }
+          
+          // mark reactants for removal
+          toRemove.add(i);
+          toRemove.add(j);
+          
+          console.log(`Reaction: ${e1.name} + ${e2.name} -> ${reaction.products?.join(' + ')}`);
+        }
       }
     }
   }
+
+  // Remove marked elements in reverse order to preserve indices
+  const indicesToRemove = Array.from(toRemove).sort((a, b) => b - a);
+  indicesToRemove.forEach(index => {
+    elements.splice(index, 1);
+  });
 }
 
 // Canvas click handler to create hydrogen (10% chance) and particle effect
@@ -154,7 +198,7 @@ canvas.addEventListener('click', (event) => {
   }
 
   // 10% chance to create hydrogen on click
-  if(Math.random() < 0.1){
+  if(Math.random() < 0.5){
     const hydrogen = window.ChemistryBIG.createElementInstance('H', x, y);
     elements.push(hydrogen);
     console.log(`Created hydrogen at (${x}, ${y})`);
@@ -162,12 +206,18 @@ canvas.addEventListener('click', (event) => {
 });
 
 let Game = {
-  fps: 60,  // UNUSED - NEXT UPDATE
 
   /**
    * contains all updates the website will receive on this loop
    * NOTE: Put any changes here in subfunctions, lets try and keep update() clean
    */
+
+
+  fps: 60,
+  lastRender: Date.now(),
+  deltaTime: 0,
+  frame: 0,
+
   update: function() {
     // update elements
     elements.forEach(element => {
@@ -181,20 +231,16 @@ let Game = {
       return p.life > 0;
     });
   },
-  /**
-   * causes program to continuously loop, mostly reserved for looping logic and not actual code
-   * NOTE: to be updated to a more robust version based on date/time
-   * @param {*} timestamp 
-   */
-  loop: function(timestamp) {
-    let progress = timestamp - lastRender;
-    
+  
+
+  // METHODS
+  draw: () => {
+    Game.lastRender = Date.now();
+
     // reset canvas
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // update all changes
-    Game.update();
 
     // REDRAW CANVAS
     // draw elements
@@ -205,63 +251,37 @@ let Game = {
     particles.forEach(particle => {
       particle.draw(ctx);
     });
-    
-    lastRender = timestamp;
+
+    debug(`Frame ${Game.frame}: Loaded in ${Game.deltaTime} ms`);
+  },
+
+
+  /**
+   * causes program to continuously loop, mostly reserved for looping logic and not actual code
+   * NOTE: to be updated to a more robust version based on date/time
+   * @param {*} timestamp 
+   */
+
+  shouldRenderFrame: () => {
+    let now = Date.now();
+    Game.deltaTime = now - Game.lastRender;
+    let mspf = (1 / Game.fps) * 1000;
+    return Game.deltaTime >= mspf
+  },
+
+  loop: () => {
+    Game.update();
+    if (Game.shouldRenderFrame()) {
+      Game.draw();
+      Game.frame += 1;
+    }
     window.requestAnimationFrame(Game.loop);
   }
 }
 
+function debug(message) {
+  if (DEBUG) console.log(message);
+}
 
 // Begin looping
-let lastRender = 0;
 window.requestAnimationFrame(Game.loop);
-
-
-/*****
-COMMENTED OUT OLD ATOM CODE - REMOVE IF WANTED
-*****/
-// document.addEventListener('DOMContentLoaded', () => {
-//   const sim = document.getElementById('sim-area');
-//   if (!sim) return;
-
-//   const particles = [];
-
-//   function _clientToLocal(clientX, clientY) {
-//     const rect = sim.getBoundingClientRect();
-//     return { x: clientX - rect.left, y: clientY - rect.top };
-//   }
-
-//   function createParticleAt(clientX, clientY, opts = {}) {
-//     const { x, y } = _clientToLocal(clientX, clientY);
-//     const el = document.createElement('div');
-//     el.className = 'particle';
-//     if (opts.size === 'small') el.classList.add('small');
-//     if (opts.size === 'large') el.classList.add('large');
-//     el.style.left = x + 'px';
-//     el.style.top = y + 'px';
-//     el.dataset.type = opts.type || '';
-
-//     sim.appendChild(el);
-//     particles.push({ el, x, y, vx: 0, vy: 0 });
-
-//     // simple fade-out after some time (placeholder behaviour)
-//     if (opts.lifetime) {
-//       setTimeout(() => {
-//         el.style.opacity = '0';
-//         setTimeout(() => el.remove(), 400);
-//       }, opts.lifetime);
-//     }
-
-//     return el;
-//   }
-
-//   // Click inside sim area spawns a particle at click location
-//   sim.addEventListener('click', (ev) => {
-//     // Only respond to primary button
-//     if (ev.button !== 0) return;
-//     createParticleAt(ev.clientX, ev.clientY, { size: 'small' });
-//   });
-
-//   // expose helper for console/other scripts
-//   window.createParticleAt = createParticleAt;
-// });
