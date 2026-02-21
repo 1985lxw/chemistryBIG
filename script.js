@@ -2,36 +2,55 @@ import { drawCanvas } from "./render.js";
 
 let canvas = document.getElementById("sim-canvas");
 const ctx = canvas.getContext("2d");
-console.log(ctx);
+let DEBUG = true; // switch this to true/false depending on 
+
 
 let Game = {
-  fps: 60,  // UNUSED - NEXT UPDATE
 
-  /**
-   * contains all updates the website will receive on this loop
-   * NOTE: Put any changes here in subfunctions, lets try and keep update() clean
-   */
-  update: function() {
-    console.log();
+  // GAME VARIABLES
+  fps: 60,
+  lastRender: Date.now(),
+  deltaTime: 0,
+  frame: 0,
+
+  // METHODS
+
+  update: () => {
+    
   },
+  draw: () => {
+    Game.lastRender = Date.now();
+    debug(`Frame ${Game.frame}: Loaded in ${Game.deltaTime} ms`);
+  },
+
+
   /**
    * causes program to continuously loop, mostly reserved for looping logic and not actual code
    * NOTE: to be updated to a more robust version based on date/time
    * @param {*} timestamp 
    */
-  loop: function(timestamp) {
-    let progress = timestamp - lastRender;
-    
+  shouldRenderFrame: () => {
+    let now = Date.now();
+    Game.deltaTime = now - Game.lastRender;
+    let mspf = (1 / Game.fps) * 1000;
+    return Game.deltaTime >= mspf
+  },
+
+  loop: () => {
     Game.update();
-    
-    lastRender = timestamp;
+    if (Game.shouldRenderFrame()) {
+      Game.draw();
+      Game.frame += 1;
+    }
     window.requestAnimationFrame(Game.loop);
   }
 }
 
+function debug(message) {
+  if (DEBUG) console.log(message);
+}
 
 // Begin looping
-let lastRender = 0;
 window.requestAnimationFrame(Game.loop);
 
 
