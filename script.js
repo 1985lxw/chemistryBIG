@@ -1,63 +1,59 @@
-// Main script for ChemistryBIG
-// Data structures for reactions and elements (canvas rendering will be added separately)
+import { drawCanvas } from "./render.js";
 
-class ElementBase {
-  constructor({ name = 'unknown', color = '#2dd4bf', size = 18, speed = 0, x = 0, y = 0 } = {}) {
-    this.name = String(name);
-    this.color = String(color);
-    this.size = Number(size);
-    this.speed = Number(speed);
-    this.x = Number(x);
-    this.y = Number(y);
-  }
+let canvas = document.getElementById("sim-canvas");
+const ctx = canvas.getContext("2d");
+console.log(ctx);
+
+while (true) {
+    console.log("Hello");
+    sleep
 }
 
-// Reaction registry (Map)
-const _norm = s => String(s).trim().toLowerCase();
-function _pairKey(a, b) { const aa = _norm(a), bb = _norm(b); return aa < bb ? `${aa}|${bb}` : `${bb}|${aa}`; }
-const REACTION_TABLE = new Map();
+/*****
+COMMENTED OUT OLD ATOM CODE - REMOVE IF WANTED
+*****/
+// document.addEventListener('DOMContentLoaded', () => {
+//   const sim = document.getElementById('sim-area');
+//   if (!sim) return;
 
-function addReaction(a, b, { products = [], consumes = true, probability = 1.0, note = '' } = {}) {
-  const key = _pairKey(a, b);
-  REACTION_TABLE.set(key, { products: products.map(p => _norm(p)), consumes: !!consumes, probability: Number(probability), note });
-}
+//   const particles = [];
 
-function react(a, b) {
-  const key = _pairKey(a, b);
-  const entry = REACTION_TABLE.get(key);
-  if (!entry) return null;
-  const roll = Math.random();
-  const happens = roll <= entry.probability;
-  return { happens, roll, entry: Object.assign({}, entry) };
-}
+//   function _clientToLocal(clientX, clientY) {
+//     const rect = sim.getBoundingClientRect();
+//     return { x: clientX - rect.left, y: clientY - rect.top };
+//   }
 
-// Expose API
-window.ChemistryBIG = window.ChemistryBIG || {};
-window.ChemistryBIG.ElementBase = ElementBase;
-window.ChemistryBIG.addReaction = addReaction;
-window.ChemistryBIG.react = react;
-window.ChemistryBIG.REACTION_TABLE = REACTION_TABLE;
+//   function createParticleAt(clientX, clientY, opts = {}) {
+//     const { x, y } = _clientToLocal(clientX, clientY);
+//     const el = document.createElement('div');
+//     el.className = 'particle';
+//     if (opts.size === 'small') el.classList.add('small');
+//     if (opts.size === 'large') el.classList.add('large');
+//     el.style.left = x + 'px';
+//     el.style.top = y + 'px';
+//     el.dataset.type = opts.type || '';
 
-// Canvas setup
-document.addEventListener('DOMContentLoaded', ()=>{
-  const canvas = document.getElementById('sim-canvas');
-  if (!canvas) return;
+//     sim.appendChild(el);
+//     particles.push({ el, x, y, vx: 0, vy: 0 });
 
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * window.devicePixelRatio;
-  canvas.height = rect.height * window.devicePixelRatio;
+//     // simple fade-out after some time (placeholder behaviour)
+//     if (opts.lifetime) {
+//       setTimeout(() => {
+//         el.style.opacity = '0';
+//         setTimeout(() => el.remove(), 400);
+//       }, opts.lifetime);
+//     }
 
-  const ctx = canvas.getContext('2d');
-  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+//     return el;
+//   }
 
-  // Initialize data from external modules if available
-  // Reactions are now available via ChemistryBIG.getReaction(a, b)
-  // Element definitions are available via ChemistryBIG.createElementInstance(name, x, y)
+//   // Click inside sim area spawns a particle at click location
+//   sim.addEventListener('click', (ev) => {
+//     // Only respond to primary button
+//     if (ev.button !== 0) return;
+//     createParticleAt(ev.clientX, ev.clientY, { size: 'small' });
+//   });
 
-  // Draw simple background (placeholder for future canvas rendering)
-  ctx.fillStyle = 'rgba(12, 18, 28, 0.5)';
-  ctx.fillRect(0, 0, rect.width, rect.height);
-  ctx.fillStyle = '#93c5fd';
-  ctx.font = '14px Arial';
-  ctx.fillText('Canvas ready. Reactions and elements loaded.', 20, 30);
-});
+//   // expose helper for console/other scripts
+//   window.createParticleAt = createParticleAt;
+// });
