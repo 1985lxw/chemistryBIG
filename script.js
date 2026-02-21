@@ -193,7 +193,7 @@ let Game = {
   update: function() {
     // update elements
     elements.forEach(element => {
-      element.update();
+      element.update(canvas);
     });
     // check collisions between elements
     checkCollisions();

@@ -11,7 +11,7 @@ export class ElementBase {
     this.vy = (Math.random() - 0.5) * this.speed;
   }
 
-  update() {
+  update(canvas) {
     // update position
     this.x += this.vx;
     this.y += this.vy;
