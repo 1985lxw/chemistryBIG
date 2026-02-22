@@ -256,7 +256,7 @@
     if (indicesToRemove.length > 0) updateElementCounter();
     }
 
-    let hydrogenClickChance = 0.1;
+    let hydrogenClickChance = 1;
     let sodiumClickChance = 0.0;
     // Canvas click handler to create hydrogen (10% chance) and particle effect
     canvas.addEventListener('click', (event) => {
@@ -314,20 +314,53 @@
             return;
         }
 
+        // Track disappeared molecules
+        window.ChemistryBIG = window.ChemistryBIG || {};
+        window.ChemistryBIG.disappearedMolecules = window.ChemistryBIG.disappearedMolecules || new Set();
+
         for (const elementName of elementsToShow) {
+            // Skip if molecule has disappeared
+            if (window.ChemistryBIG.disappearedMolecules.has(elementName)) continue;
+            // Only show if not a molecule that has disappeared
             const raw = counts[elementName] || 0;
             const displayCount = Number.isInteger(raw) ? raw : raw.toFixed(1);
             const def = window.ChemistryBIG.getElementDefinition(elementName);
 
-            const counterItem = document.createElement("div");
-            counterItem.className = "counter-item";
-            counterItem.style.borderLeftColor = def.color;
-            counterItem.style.borderLeftWidth = "3px";
-            counterItem.innerHTML = `
-            <span class="element-name">${elementName}</span>
-            <span class="element-count">${displayCount}</span>
-            `;
-            counterList.appendChild(counterItem);
+            // Only add to DOM if not disappeared
+            if (!window.ChemistryBIG.disappearedMolecules.has(elementName)) {
+                const counterItem = document.createElement("div");
+                counterItem.className = "counter-item";
+                counterItem.style.borderLeftColor = def.color;
+                counterItem.style.borderLeftWidth = "3px";
+                counterItem.innerHTML = `
+                <span class="element-name">${elementName}</span>
+                <span class="element-count">${displayCount}</span>
+                `;
+                counterList.appendChild(counterItem);
+            }
+        }
+
+        // Animate molecule unlock: shrink and disappear after 5 seconds
+        const moleculesList = document.getElementById("molecules-list");
+        if (window.ChemistryBIG.moleculeDefinitions) {
+            Object.entries(window.ChemistryBIG.moleculeDefinitions).forEach(([molKey, molDef]) => {
+                // Prevent rendering if disappeared
+                if (window.ChemistryBIG.disappearedMolecules.has(molKey)) {
+                    const molItem = moleculesList?.querySelector(`.molecule-item[data-molecule='${molKey}']`);
+                    if (molItem) molItem.remove();
+                    return;
+                }
+                if (molDef.unlocked) {
+                    const molItem = moleculesList?.querySelector(`.molecule-item[data-molecule='${molKey}']`);
+                    if (molItem && !molItem.classList.contains("disappear")) {
+                        setTimeout(() => {
+                            molItem.classList.add("disappear");
+                            window.ChemistryBIG.disappearedMolecules.add(molKey);
+                            setTimeout(() => molItem.remove(), 1000);
+                        }, 5000);
+                    }
+                }
+            });
         }
 
     }

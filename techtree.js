@@ -43,8 +43,6 @@ function checkMoleculeUnlocks(elementCounts) {
       // Update the molecules display
       updateMoleculesDisplay();
 
-      // Scroll the molecules list to show the newly unlocked molecule
-      scrollToMolecule(moleculeKey);
     }
   }
 }
@@ -99,19 +97,6 @@ function updateMoleculesDisplay() {
   });
 }
 
-  /**
-   * Scroll the molecules panel to show the given molecule key if present
-   * @param {string} moleculeKey
-   */
-  function scrollToMolecule(moleculeKey) {
-    const moleculesList = document.getElementById('molecules-list');
-    if (!moleculesList) return;
-    const el = moleculesList.querySelector(`[data-molecule="${moleculeKey}"]`);
-    if (!el) return;
-
-    // Smoothly reveal the element inside the scroll container
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
 
 // Export functions to window for use in other scripts
 window.ChemistryBIG = window.ChemistryBIG || {};
@@ -121,8 +106,6 @@ window.ChemistryBIG.getMoleculeDefinition = getMoleculeDefinition;
 window.ChemistryBIG.updateMoleculesDisplay = updateMoleculesDisplay;
 // parseMoleculeComposition and calculateRequiredCounts are exported from moleculeDefinitions.js
 
-// Expose scroll helper in case other code wants to reveal molecules
-window.ChemistryBIG.scrollToMolecule = scrollToMolecule;
 
 // Initialize the molecules display immediately when this script loads
 if (document.readyState === 'loading') {
