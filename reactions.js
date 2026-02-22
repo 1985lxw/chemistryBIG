@@ -16,12 +16,23 @@
     { reactants: ['C', 'H'], products: ['N'], consumes: true, probability: 0.1, note: 'C + H -> N' },
     { reactants: ['C', 'He'], products: ['O'], consumes: true, probability: 0.5, note: 'C + He -> O' },
     { reactants: ['O', 'H'], products: ['F'], consumes: true, probability: 0.05, note: 'O + H -> F' },
-    { reactants: ['O', 'He'], products: ['Ne'], consumes: true, probability: 0.01, note: 'O + He -> Ne' }
+    { reactants: ['F', 'H'], products: ['Ne'], consumes: true, probability: 0.05, note: 'F + H -> Ne' },
+    { reactants: ['O', 'O'], products: ['Ne'], consumes: true, probability: 0.01, note: 'O + O -> Ne' },
+    { reactants: ['Na', 'Na'], products: ['Mg'], consumes: true, probability: 0.15, note: 'Na + Na -> Mg' },
+    { reactants: ['O', 'Mg'], products: ['Si'], consumes: true, probability: 0.05, note: 'O + Mg -> Si' },
+    { reactants: ['Mg', 'He'], products: ['Al'], consumes: true, probability: 0.05, note: 'Mg + He -> Al' },
+    { reactants: ['Si', 'H'], products: ['S'], consumes: true, probability: 0.15, note: 'Si + H -> S' },
+    { reactants: ['Si', 'He'], products: ['P'], consumes: true, probability: 0.15, note: 'Si + He -> P' },
+    { reactants: ['S', 'He'], products: ['Ar'], consumes: true, probability: 0.15, note: 'S + He -> Ar' },
+    { reactants: ['Cl', 'H'], products: ['Ar'], consumes: true, probability: 0.15, note: 'Cl + H -> Ar' },
+    { reactants: ['S', 'H'], products: ['Cl'], consumes: true, probability: 0.15, note: 'S + H -> Cl' }
   ];
 
   // Decay reactions (solo element reactions)
   const DECAY_DEFINITIONS = [
-    { reactant: 'Be', products: ['He', 'He'], probability: 0.0001, note: 'Be -> He + He' }
+    { reactant: 'Be', products: ['He', 'He'], probability: 0.0001, note: 'Be -> He + He' },
+    { reactant: 'Cl', products: ['S', 'H'], probability: 0.0001, note: 'Cl -> S + H' },
+    { reactant: 'Al', products: ['Mg', 'Mg'], probability: 0.0001, note: 'Al -> Mg + Mg' }
   ];
 
   // Build the REACTIONS Map from definitions

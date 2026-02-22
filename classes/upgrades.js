@@ -4,6 +4,20 @@ export const UPGRADES = [
   // EARLY: get things moving
   // =========================
   {
+    id: "auto_na_1_salt_mine",
+    name: "Salt Mine",
+    desc: "Start producing Sodium (Na) over time.",
+    cost: { H: 1 },
+    effect: { type: "auto_element", element: "Na", rate: 5.0 } 
+  },
+  {
+    id: "sodium_click_1",
+    name: "Salt Surge",
+    desc: "On click, small chance to create a Sodium atom.",
+    cost: { H: 1 },
+    effect: { type: "sodium_click_chance_add", add: 0.05 } // +5%
+  },
+  {
     id: "auto_h_1",
     name: "Hydrogen Drip (Lv 1)",
     desc: "Auto-generate Hydrogen slowly.",

@@ -257,6 +257,7 @@
     }
 
     let hydrogenClickChance = 0.1;
+    let sodiumClickChance = 0.0;
     // Canvas click handler to create hydrogen (10% chance) and particle effect
     canvas.addEventListener('click', (event) => {
         if (paused) return;
@@ -281,6 +282,10 @@
         // 10% chance to create hydrogen on click
         if (Math.random() < hydrogenClickChance) {
             spawnElement("H", x, y);
+            updateElementCounter();
+        }
+        if (Math.random() < sodiumClickChance) {
+            spawnElement("Na", x, y);
             updateElementCounter();
         }
     });
@@ -399,6 +404,10 @@
             case "hydrogen_click_chance_add":
             hydrogenClickChance += effect.add;
             hydrogenClickChance = Math.min(hydrogenClickChance, 0.95); // cap at 95%
+            break;
+            case "sodium_click_chance_add":
+            sodiumClickChance += effect.add;
+            sodiumClickChance = Math.min(sodiumClickChance, 0.5); // cap at 50%
             break;
         }
     }
