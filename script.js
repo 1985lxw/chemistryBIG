@@ -557,7 +557,7 @@
         const overlay = document.createElement("div");
         overlay.id = "element-tooltip-overlay";
         overlay.innerHTML = `
-            <div class="element-tooltip-card" style="border-left: 6px solid ${def.color || "#2dd4bf"}; background: url('consultant_chad_ken.jpeg') center/cover no-repeat; min-height: 220px; position: relative; opacity: ${bgOpacity};">
+            <div class="element-tooltip-card" style="border-left: 6px solid ${def.color || "#2dd4bf"}; background: url('consultant_chad_ken.jpeg') center/cover no-repeat; min-height: 220px; position: relative;">
                 <div style="background: transparent; border-radius: 12px; padding: 16px; margin: 24px;">
                     <div class="element-tooltip-title" style="color: #fff;">${symbol} — ${niceName}</div>
                     <div class="element-tooltip-desc" style="color: #e0e0e0;">${desc}</div>
