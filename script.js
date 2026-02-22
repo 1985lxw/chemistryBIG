@@ -10,7 +10,7 @@ let DEBUG = true; // switch this to true/false depending on
 // --- Reaction speed bonus tuning ---
 const REACTION_SPEED_THRESHOLD = 2.5;   // below this: no bonus
 const REACTION_SPEED_MAX = 12.0;        // at/above this: full bonus
-const REACTION_SPEED_BONUS_MAX = 0.35;  // max +35% absolute probability (clamped)
+const REACTION_SPEED_BONUS_MAX = 0;  // max +35% absolute probability (clamped)
 
 // helper
 function clamp01(x) {
@@ -275,7 +275,7 @@ canvas.addEventListener('click', (event) => {
   }
 
   // 10% chance to create hydrogen on click
-  if (Math.random() < 0.5) {
+  if (Math.random() < 1) {
     const hydrogen = window.ChemistryBIG.createElementInstance('H', x, y);
     elements.push(hydrogen);
     console.log(`Created hydrogen at (${x}, ${y})`);
