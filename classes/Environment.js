@@ -8,6 +8,7 @@ const REACTION_SPEED_MAX = 12.0; // at/above this: full bonus
 const REACTION_SPEED_BONUS_MAX = 0.35; // max +35% absolute probability (clamped)
 
 import { Particle } from "./Particle.js";
+import { UPGRADES } from "./upgrades.js";
 
 // helper
 function clamp01(x) {
