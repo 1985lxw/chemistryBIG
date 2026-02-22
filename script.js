@@ -1,79 +1,403 @@
-// import { Environment } from "./environment.js";
 import { ElementBase, Environment } from "./classes/classes.js";
+import { UPGRADES } from "./classes/upgrades.js";
 
 let mainEnvironment = new Environment();
 let environments = [mainEnvironment];
 mainEnvironment.initializeCanvas(document.getElementById("sim-main"), 600, 600);
 mainEnvironment.canvas.classList.add("main-canvas");
-mainEnvironment.canvas.id = ("sim-canvas-main");
+mainEnvironment.canvas.id = "sim-canvas-main";
 
 mainEnvironment.setBGImage("./space_texture.jpg");
-// mainEnvironment.resizeCanvas(600, 600);
-let DEBUG = true; // switch this to true/false depending on 
+let DEBUG = true; // switch this to true/false depending on
+let paused = false;
 
+// discovered elements tooltips
+const discoveredElements = new Set();
+const discoveryQueue = [];
+let tooltipOpen = false;
 
 function makeEnv() {
   let asdfas = new Environment();
   asdfas.initializeCanvas(document.getElementById("sim-other"), 500, 200);
   environments.push(asdfas);
 }
-for(let i = 0; i < 3; i++) {
+for (let i = 0; i < 3; i++) {
   makeEnv();
 }
-
-
 
 // Register ElementBase globally
 window.ChemistryBIG = window.ChemistryBIG || {};
 window.ChemistryBIG.ElementBase = ElementBase;
+window.ChemistryBIG.counters = window.ChemistryBIG.counters || {};
+window.ChemistryBIG.getCounter = function (name) {
+  return window.ChemistryBIG.counters[name] || 0;
+};
+window.ChemistryBIG.incrCounter = function (name, amount = 1) {
+  const sym = normalizeSymbol(name);
+  const prev = window.ChemistryBIG.counters[sym] || 0;
+  const next = prev + amount;
+  window.ChemistryBIG.counters[sym] = next;
+
+  // Only trigger tooltip on first time crossing 0 -> >0
+  onElementGained(sym, prev, next);
+
+  return next;
+};
+
+window.ChemistryBIG.spendCounter = function (name, amount = 1) {
+  const cur = window.ChemistryBIG.getCounter(name);
+  const next = Math.max(0, cur - amount);
+  window.ChemistryBIG.counters[name] = next;
+  return next;
+};
 
 // Update the element counter display
 function updateElementCounter() {
-  const counterList = document.getElementById('counter-list');
+  const counterList = document.getElementById("counter-list");
   const counts = {};
   for (const environment of environments) {
-      for (const [element, count] of Object.entries(environment.countElements())) {
-          counts[element] = (counts[element] || 0) + count;
-      }
+    for (const [element, count] of Object.entries(
+      environment.countElements(),
+    )) {
+      counts[element] = (counts[element] || 0) + count;
+    }
   }
-  
-  mainEnvironment.countElements();
+
   const allElements = window.ChemistryBIG.getAllElements();
-  
-  // Check for molecule unlocks based on current element counts
+
+  // Unlock checks should use the same single counter system
   if (window.ChemistryBIG.checkMoleculeUnlocks) {
     window.ChemistryBIG.checkMoleculeUnlocks(counts);
   }
-  
-  // Clear current display
-  counterList.innerHTML = '';
-  
-  // Only show elements that exist in the canvas
-  const elementsToShow = allElements.filter(elementName => counts[elementName] > 0);
-  
+
+  counterList.innerHTML = "";
+
+  const elementsToShow = allElements.filter((name) => (counts[name] || 0) > 0);
+
   if (elementsToShow.length === 0) {
-    counterList.innerHTML = '<div style="padding: 8px; text-align: center; color: #93c5fd; font-size: 12px; opacity: 0.6;">No elements</div>';
+    counterList.innerHTML =
+      '<div style="padding: 8px; text-align: center; color: #93c5fd; font-size: 12px; opacity: 0.6;">No elements</div>';
     return;
   }
-  
-  elementsToShow.forEach(elementName => {
-    const count = counts[elementName];
+
+  // Track disappeared molecules
+  window.ChemistryBIG = window.ChemistryBIG || {};
+  window.ChemistryBIG.disappearedMolecules =
+    window.ChemistryBIG.disappearedMolecules || new Set();
+
+  for (const elementName of elementsToShow) {
+    // Skip if molecule has disappeared
+    if (window.ChemistryBIG.disappearedMolecules.has(elementName)) continue;
+    // Only show if not a molecule that has disappeared
+    const raw = counts[elementName] || 0;
+    const displayCount = Number.isInteger(raw) ? raw : raw.toFixed(1);
     const def = window.ChemistryBIG.getElementDefinition(elementName);
-    
-    const counterItem = document.createElement('div');
-    counterItem.className = 'counter-item';
-    counterItem.style.borderLeftColor = def.color;
-    counterItem.style.borderLeftWidth = '3px';
-    counterItem.innerHTML = `
+
+    // Only add to DOM if not disappeared
+    if (!window.ChemistryBIG.disappearedMolecules.has(elementName)) {
+      const counterItem = document.createElement("div");
+      counterItem.className = "counter-item";
+      counterItem.style.borderLeftColor = def.color;
+      counterItem.style.borderLeftWidth = "3px";
+      counterItem.innerHTML = `
       <span class="element-name">${elementName}</span>
-      <span class="element-count">${count}</span>
+      <span class="element-count">${displayCount}</span>
     `;
-    counterList.appendChild(counterItem);
-  });
+      counterList.appendChild(counterItem);
+    }
+  }
+
+  // Animate molecule unlock: shrink and disappear after 5 seconds
+  const moleculesList = document.getElementById("molecules-list");
+  if (window.ChemistryBIG.moleculeDefinitions) {
+    Object.entries(window.ChemistryBIG.moleculeDefinitions).forEach(
+      ([molKey, molDef]) => {
+        // Prevent rendering if disappeared
+        if (window.ChemistryBIG.disappearedMolecules.has(molKey)) {
+          const molItem = moleculesList?.querySelector(
+            `.molecule-item[data-molecule='${molKey}']`,
+          );
+          if (molItem) molItem.remove();
+          return;
+        }
+        if (molDef.unlocked) {
+          const molItem = moleculesList?.querySelector(
+            `.molecule-item[data-molecule='${molKey}']`,
+          );
+          if (molItem && !molItem.classList.contains("disappear")) {
+            setTimeout(() => {
+              molItem.classList.add("disappear");
+              window.ChemistryBIG.disappearedMolecules.add(molKey);
+              setTimeout(() => molItem.remove(), 1000);
+            }, 5000);
+          }
+        }
+      },
+    );
+  }
 }
 
 // element counter -----------------------------
+function normalizeSymbol(sym) {
+  const s = (sym ?? "").toString().trim();
+  if (s.length === 0) return s;
+  if (s.length === 1) return s.toUpperCase(); // h -> H
+  return s[0].toUpperCase() + s.slice(1).toLowerCase(); // he -> He, LI -> Li
+}
 
+function spawnElement(name, x, y) {
+  const symbol = normalizeSymbol(name);
+
+  const e = window.ChemistryBIG?.createElementInstance?.(symbol, x, y);
+  if (!e) return null;
+
+  elements.push(e);
+
+  // increment using the actual created symbol
+  window.ChemistryBIG.incrCounter(e.name, 1);
+
+  return e;
+}
+// upgrade system
+const UPGRADE_WINDOW_SIZE = 5;
+let availableUpgrades = UPGRADES.slice();
+
+// tracks auto-generation rates by element
+const autoRates = Object.create(null);
+
+let clickMultiplier = 1.0;
+let reactionProbBonus = 0.0;
+
+function canAfford(costMap) {
+  for (const [symRaw, amt] of Object.entries(costMap)) {
+    const sym = normalizeSymbol(symRaw);
+    if (window.ChemistryBIG.getCounter(sym) < amt) return false;
+  }
+  return true;
+}
+
+function payCost(costMap) {
+  for (const [symRaw, amt] of Object.entries(costMap)) {
+    const sym = normalizeSymbol(symRaw);
+    window.ChemistryBIG.spendCounter(sym, amt);
+  }
+}
+
+function addElementCurrency(elementName, amount) {
+  const sym = normalizeSymbol(elementName);
+  window.ChemistryBIG.incrCounter(sym, amount);
+  updateElementCounter();
+  refreshUpgradeAffordability();
+}
+
+function applyUpgradeEffect(effect) {
+  if (!effect) return;
+
+  switch (effect.type) {
+    case "auto_element": {
+      const el = normalizeSymbol(effect.element);
+      autoRates[el] = (autoRates[el] || 0) + effect.rate;
+      break;
+    }
+    case "click_mult":
+      clickMultiplier *= effect.mult;
+      break;
+    case "reaction_prob_add":
+      reactionProbBonus += effect.add;
+      break;
+    case "hydrogen_click_chance_add":
+      hydrogenClickChance += effect.add;
+      hydrogenClickChance = Math.min(hydrogenClickChance, 0.95); // cap at 95%
+      break;
+    case "sodium_click_chance_add":
+      sodiumClickChance += effect.add;
+      sodiumClickChance = Math.min(sodiumClickChance, 0.5); // cap at 50%
+      break;
+  }
+}
+
+function setupUpgradeClicks() {
+  const list = document.getElementById("upgrades-list");
+  if (!list) return;
+
+  list.addEventListener("click", (e) => {
+    const btn = e.target.closest("button.upgrade-btn");
+    if (!btn) return;
+
+    const upgradeId = btn.dataset.upgradeId;
+
+    // Find upgrade from the remaining list
+    const idx = availableUpgrades.findIndex((u) => u.id === upgradeId);
+    if (idx === -1) return;
+    const up = availableUpgrades[idx];
+
+    const costMap = up.cost ?? {};
+    if (!canAfford(costMap)) {
+      console.log("❌ cannot afford", up.name, costMap);
+      btn.classList.add("cant-afford");
+      setTimeout(() => btn.classList.remove("cant-afford"), 180);
+      return;
+    }
+
+    console.log(`✅ Purchasing upgrade: ${up.name}`);
+
+    payCost(costMap);
+    applyUpgradeEffect(up.effect);
+
+    // ✅ Remove only the purchased upgrade
+    availableUpgrades.splice(idx, 1);
+
+    updateElementCounter();
+    renderUpgradesPanel(); // only rebuild on purchase
+  });
+}
+
+function renderUpgradesPanel() {
+  const list = document.getElementById("upgrades-list");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  // Show the first N remaining upgrades
+  const slice = availableUpgrades.slice(0, UPGRADE_WINDOW_SIZE);
+
+  for (const up of slice) {
+    const btn = document.createElement("button");
+    btn.className = "upgrade-btn";
+    btn.type = "button";
+    btn.dataset.upgradeId = up.id;
+
+    const costMap = up.cost ?? {};
+    const affordable = canAfford(costMap);
+    btn.classList.toggle("affordable", affordable);
+    btn.classList.toggle("unaffordable", !affordable);
+
+    const costText = Object.entries(costMap)
+      .map(([sym, amt]) => `${amt} ${normalizeSymbol(sym)}`)
+      .join(" + ");
+
+    btn.innerHTML = `
+            <span class="upgrade-name">${up.name}</span>
+            <span class="upgrade-cost">${costText}</span>
+            `;
+
+    btn.title = up.desc || "";
+    list.appendChild(btn);
+  }
+}
+
+function refreshUpgradeAffordability() {
+  const list = document.getElementById("upgrades-list");
+  if (!list) return;
+
+  const btns = list.querySelectorAll("button.upgrade-btn");
+  btns.forEach((btn) => {
+    const id = btn.dataset.upgradeId;
+    const up = availableUpgrades.find((u) => u.id === id);
+    if (!up) return;
+
+    const affordable = canAfford(up.cost ?? {});
+    btn.classList.toggle("affordable", affordable);
+    btn.classList.toggle("unaffordable", !affordable);
+  });
+}
+
+let lastAutoTime = performance.now();
+function autoTick() {
+  const now = performance.now();
+  const dt = (now - lastAutoTime) / 1000;
+  lastAutoTime = now;
+
+  if (paused) {
+    requestAnimationFrame(autoTick);
+    return;
+  }
+
+  let changed = false;
+
+  for (const [elementName, rate] of Object.entries(autoRates)) {
+    const add = rate * dt;
+    if (add > 0) {
+      const sym = normalizeSymbol(elementName);
+      window.ChemistryBIG.incrCounter(sym, add);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    updateElementCounter();
+    refreshUpgradeAffordability();
+  }
+
+  requestAnimationFrame(autoTick);
+}
+
+function pauseGame() {
+  paused = true;
+}
+
+function resumeGame() {
+  paused = false;
+}
+
+// Track background opacity globally
+window.ChemistryBIG = window.ChemistryBIG || {};
+if (typeof window.ChemistryBIG.chadKenOpacity !== "number") {
+  window.ChemistryBIG.chadKenOpacity = 1;
+}
+
+function showElementTooltip(symbol) {
+  if (tooltipOpen) return;
+  tooltipOpen = true;
+  pauseGame();
+
+  const def = window.ChemistryBIG?.getElementDefinition?.(symbol) || {};
+  const niceName = def.displayName || def.name || symbol;
+  const desc = def.desc || def.description || "New element discovered!";
+
+  const overlay = document.createElement("div");
+  overlay.id = "element-tooltip-overlay";
+  overlay.innerHTML = `
+            <div class="element-tooltip-card" style="border-left: 6px solid ${def.color || "#2dd4bf"}; background: url('consultant_chad_ken.jpeg') center/cover no-repeat; min-height: 220px; position: relative;">
+                <div style="background: transparent; border-radius: 12px; padding: 16px; margin: 24px;">
+                    <div class="element-tooltip-title" style="color: #fff;">${symbol} — ${niceName}</div>
+                    <div class="element-tooltip-desc" style="color: #e0e0e0;">${desc}</div>
+                    <button type="button" class="element-tooltip-close" style="margin-top: 16px;">Continue</button>
+                </div>
+            </div>
+        `;
+
+  document.body.appendChild(overlay);
+
+  const closeBtn = overlay.querySelector(".element-tooltip-close");
+  closeBtn.addEventListener("click", () => {
+    overlay.remove();
+    tooltipOpen = false;
+    resumeGame();
+    // If more discoveries happened while paused, show next
+    if (discoveryQueue.length > 0) {
+      const next = discoveryQueue.shift();
+      showElementTooltip(next);
+    }
+  });
+}
+
+// Call this whenever an element count increases
+function onElementGained(symbol, prevCount, newCount) {
+  if (prevCount > 0) return; // already had it before
+  if (newCount <= 0) return; // still none
+  if (discoveredElements.has(symbol)) return;
+
+  discoveredElements.add(symbol);
+
+  // If a tooltip is already open, queue it; otherwise show now
+  if (tooltipOpen || paused) discoveryQueue.push(symbol);
+  else showElementTooltip(symbol);
+}
+
+// Call these once on startup (after DOM exists)
+renderUpgradesPanel();
+requestAnimationFrame(autoTick);
 
 let Game = {
   fps: 60,
@@ -82,8 +406,8 @@ let Game = {
   frame: 0,
 
   update: function () {
-    // update elements
-    environments.forEach(environment => {
+    // update environments
+    environments.forEach((environment) => {
       environment.updateElements();
       environment.checkCollisions();
       environment.checkDecays();
@@ -91,7 +415,7 @@ let Game = {
     });
   },
 
-  draw:  () => {
+  draw: () => {
     Game.lastRender = Date.now();
 
     // background first
@@ -108,19 +432,21 @@ let Game = {
     let now = Date.now();
     Game.deltaTime = now - Game.lastRender;
     let mspf = (1 / Game.fps) * 1000;
-    return Game.deltaTime >= mspf
+    return Game.deltaTime >= mspf;
   },
 
   loop: () => {
-    Game.update();
-    if (Game.shouldRenderFrame()) {
-      Game.draw();
-      updateElementCounter();
-      Game.frame += 1;
+    if (!paused) {
+      Game.update();
+      if (Game.shouldRenderFrame()) {
+        Game.draw();
+        updateElementCounter();
+        Game.frame += 1;
+      }
     }
     window.requestAnimationFrame(Game.loop);
-  }
-}
+  },
+};
 
 function debug(message) {
   if (DEBUG) console.log(message);
@@ -128,6 +454,15 @@ function debug(message) {
 
 // Initialize element counter on page load
 updateElementCounter();
+document.addEventListener(
+  "click",
+  (e) => {
+    console.log("DOCUMENT CLICK:", e.target);
+  },
+  true,
+); // capture phase
+setupUpgradeClicks();
+renderUpgradesPanel();
 
 // Begin looping
 window.requestAnimationFrame(Game.loop);
